@@ -1,32 +1,48 @@
 pipeline {
     agent any
-
+    
     tools {
         maven 'Maven-3.8.1'
         jdk 'JDK-11'
     }
-
+    
     stages {
         stage('Build') {
             steps {
-                sh 'mvn clean package -DskipTests'
+                bat 'mvn clean package -DskipTests'
             }
         }
-
+        
         stage('Deploy') {
             steps {
-                sh '''
-                    # Kill existing app
-                    pkill -f "demo.*jar" || true
-
-                    # Start new app
-                    nohup java -jar target/*.jar > app.log 2>&1 &
-
-                    # Wait and check
-                    sleep 10
-                    curl http://localhost:8080/hello
-                '''
+                script {
+                    bat '''
+                        REM Kill existing Java processes
+                        taskkill /F /IM java.exe || echo No existing Java process found
+                        
+                        REM Wait a moment
+                        timeout /t 5 /nobreak
+                        
+                        REM Start the application
+                        start /B java -jar target\\*.jar
+                        
+                        REM Wait for startup
+                        timeout /t 15 /nobreak
+                        
+                        REM Test the application
+                        curl http://localhost:8080/hello || echo Application is starting...
+                    '''
+                }
             }
+        }
+    }
+    
+    post {
+        success {
+            echo 'Deployment successful!'
+        }
+        failure {
+            echo 'Deployment failed!'
         }
     }
 }

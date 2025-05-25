@@ -1,0 +1,14 @@
+com\springboot\mygreetings\GreetingController.class
+com\springboot\mygreetings\GreetingRepository.class
+com\springboot\mygreetings\GreetingMessage.class
+com\springboot\spring\HelloWorldWithThymeleaf.class
+com\springboot\spring\HelloWorldUsingRest.class
+com\springboot\spring\HelloPostController$UserDTO.class
+com\springboot\spring\RestCall.class
+com\springboot\spring\HelloPutController.class
+com\springboot\spring\HelloWorldController.class
+com\springboot\spring\RestCallController.class
+com\springboot\spring\HelloPostController.class
+com\springboot\Application.class
+com\springboot\mygreetings\GreetingService.class
+com\springboot\spring\VariousHTTPMethods.class

@@ -1,0 +1,32 @@
+pipeline {
+    agent any
+
+    tools {
+        maven 'Maven-3.8.1'
+        jdk 'JDK-11'
+    }
+
+    stages {
+        stage('Build') {
+            steps {
+                sh 'mvn clean package -DskipTests'
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                sh '''
+                    # Kill existing app
+                    pkill -f "demo.*jar" || true
+
+                    # Start new app
+                    nohup java -jar target/*.jar > app.log 2>&1 &
+
+                    # Wait and check
+                    sleep 10
+                    curl http://localhost:8080/hello
+                '''
+            }
+        }
+    }
+}

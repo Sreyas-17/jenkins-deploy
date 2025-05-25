@@ -6,7 +6,23 @@ pipeline {
         jdk 'JDK-11'
     }
     
+    environment {
+        JAVA_HOME = tool('JDK-11')
+        PATH = "${JAVA_HOME}\\bin;${env.PATH}"
+    }
+    
     stages {
+        stage('Verify Environment') {
+            steps {
+                bat '''
+                    echo Java Home: %JAVA_HOME%
+                    echo Path: %PATH%
+                    java -version
+                    mvn -version
+                '''
+            }
+        }
+        
         stage('Build') {
             steps {
                 bat 'mvn clean package -DskipTests'
@@ -17,20 +33,39 @@ pipeline {
             steps {
                 script {
                     bat '''
-                        REM Kill existing Java processes
-                        taskkill /F /IM java.exe || echo No existing Java process found
+                        REM Kill existing Java processes (ignore errors)
+                        taskkill /F /IM java.exe 2>nul || echo No existing Java process found
                         
                         REM Wait a moment
-                        timeout /t 5 /nobreak
+                        timeout /t 3 /nobreak >nul
                         
-                        REM Start the application
-                        start /B java -jar target\\*.jar
+                        REM Find the JAR file
+                        for %%f in (target\\*.jar) do set JAR_FILE=%%f
+                        echo Starting application: %JAR_FILE%
+                        
+                        REM Start the application in background
+                        start /B java -jar %JAR_FILE%
                         
                         REM Wait for startup
-                        timeout /t 15 /nobreak
+                        echo Waiting for application to start...
+                        timeout /t 20 /nobreak >nul
                         
-                        REM Test the application
-                        curl http://localhost:8080/hello || echo Application is starting...
+                        echo Deployment completed!
+                    '''
+                }
+            }
+        }
+        
+        stage('Health Check') {
+            steps {
+                script {
+                    bat '''
+                        echo Testing application endpoints...
+                        
+                        REM Try to access the application (may fail initially)
+                        curl http://localhost:8080/hello || echo Application may still be starting...
+                        
+                        echo Health check completed!
                     '''
                 }
             }
@@ -39,10 +74,10 @@ pipeline {
     
     post {
         success {
-            echo 'Deployment successful!'
+            echo 'Pipeline completed successfully!'
         }
         failure {
-            echo 'Deployment failed!'
+            echo 'Pipeline failed! Check the logs above.'
         }
     }
 }

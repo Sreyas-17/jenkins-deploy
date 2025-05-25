@@ -11,6 +11,9 @@ pipeline {
                     echo Java version:
                     java -version
                     
+                    echo Maven version:
+                    mvn -version
+                    
                     echo Listing root files:
                     dir
                 '''
@@ -26,8 +29,8 @@ pipeline {
                     echo Listing spring directory:
                     dir
                     
-                    echo Building with Maven wrapper:
-                    mvnw.cmd clean package -DskipTests
+                    echo Building with system Maven:
+                    mvn clean package -DskipTests
                 '''
             }
         }
@@ -65,7 +68,7 @@ pipeline {
                     REM List Java processes
                     tasklist | findstr java || echo No Java processes found
                     
-                    REM Test endpoints (might fail if app is still starting)
+                    REM Test endpoints
                     curl http://localhost:8080/ || echo Testing root endpoint...
                     curl http://localhost:8080/hello || echo Testing hello endpoint...
                     

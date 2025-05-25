@@ -8,7 +8,7 @@ pipeline {
     
     environment {
         JAVA_HOME = tool('JDK-11')
-        PATH = "${JAVA_HOME}\\bin;${env.PATH}"
+        PATH = "${tool('JDK-11')}\\bin;${tool('Maven-3.8.1')}\\bin;${env.PATH}"
     }
     
     stages {
@@ -16,8 +16,12 @@ pipeline {
             steps {
                 bat '''
                     echo Java Home: %JAVA_HOME%
-                    echo Path: %PATH%
-                    java -version
+                    echo.
+                    echo Java Version:
+                    "%JAVA_HOME%\\bin\\java" -version
+                    echo.
+                    echo Maven Version:
+                    "%JAVA_HOME%\\bin\\java" -version 2>&1 | findstr "version"
                     mvn -version
                 '''
             }
@@ -25,7 +29,10 @@ pipeline {
         
         stage('Build') {
             steps {
-                bat 'mvn clean package -DskipTests'
+                bat '''
+                    echo Building with Maven...
+                    mvn clean package -DskipTests
+                '''
             }
         }
         
@@ -33,6 +40,8 @@ pipeline {
             steps {
                 script {
                     bat '''
+                        echo Starting deployment...
+                        
                         REM Kill existing Java processes (ignore errors)
                         taskkill /F /IM java.exe 2>nul || echo No existing Java process found
                         
@@ -43,8 +52,8 @@ pipeline {
                         for %%f in (target\\*.jar) do set JAR_FILE=%%f
                         echo Starting application: %JAR_FILE%
                         
-                        REM Start the application in background
-                        start /B java -jar %JAR_FILE%
+                        REM Start the application using the correct Java
+                        start /B "%JAVA_HOME%\\bin\\java" -jar %JAR_FILE%
                         
                         REM Wait for startup
                         echo Waiting for application to start...
@@ -62,7 +71,10 @@ pipeline {
                     bat '''
                         echo Testing application endpoints...
                         
-                        REM Try to access the application (may fail initially)
+                        REM Check if process is running
+                        tasklist | findstr java || echo No Java process found
+                        
+                        REM Try to access the application
                         curl http://localhost:8080/hello || echo Application may still be starting...
                         
                         echo Health check completed!

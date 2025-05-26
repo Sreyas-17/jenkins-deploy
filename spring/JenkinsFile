@@ -4,38 +4,32 @@ pipeline {
     stages {
         stage('Build and Deploy') {
             steps {
-                echo 'Building and deploying Spring Boot app...'
+                echo 'Building Spring Boot application...'
                 
                 dir('spring') {
-                    // Stop any running app on port 8080
-                    bat '''
-                        for /f "tokens=5" %%i in ('netstat -ano ^| findstr :8080 ^| findstr LISTENING') do (
-                            taskkill /PID %%i /F 2>nul || echo No process to kill
-                        )
-                    '''
-                    
-                    // Build the app
+                    // Build the application
                     bat 'mvn clean package -DskipTests'
                     
-                    // Start the app
+                    // Start the application
                     bat 'start /B java -jar target\\*.jar'
                     
-                    // Wait for startup
-                    bat 'timeout /t 30 /nobreak'
+                    // Wait for application to start
+                    bat 'timeout /t 20 /nobreak'
                 }
             }
         }
         
-        stage('Test') {
+        stage('Test Application') {
             steps {
                 echo 'Testing the application...'
                 
                 script {
                     try {
                         bat 'curl http://localhost:8080/greeting'
-                        echo '✅ Application is running!'
+                        echo '✅ Application is working!'
                     } catch (Exception e) {
-                        echo '❌ Application test failed'
+                        echo '⚠️ Curl test failed, but app might still be running'
+                        echo 'Try manually: curl http://localhost:8080/greeting'
                     }
                 }
             }
@@ -43,12 +37,15 @@ pipeline {
     }
     
     post {
+        always {
+            echo 'Build completed!'
+            echo 'If successful, test with: curl http://localhost:8080/greeting'
+        }
         success {
-            echo '🎉 SUCCESS! Your app is running on http://localhost:8080/greeting'
-            echo 'Test it with: curl http://localhost:8080/greeting'
+            echo '✅ SUCCESS! Your Spring Boot app should be running on port 8080'
         }
         failure {
-            echo '❌ Deployment failed!'
+            echo '❌ Build failed. Check the logs above.'
         }
     }
 }

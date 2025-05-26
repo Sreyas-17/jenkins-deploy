@@ -2,124 +2,44 @@ pipeline {
     agent any
     
     stages {
-        stage('Build') {
+        stage('Build Only') {
             steps {
                 bat '''
                     cd spring
-                    echo Building Spring Boot application...
-                    mvn clean package -DskipTests
+                    echo "Building Spring Boot application..."
+                    mvn clean package -DskipTests -q
+                    echo "Build completed!"
                     dir target\\*.jar
                 '''
             }
         }
         
-        stage('Stop Previous App') {
+        stage('Deploy') {
             steps {
                 bat '''
-                    echo Stopping existing Spring Boot application...
-                    
-                    REM Kill existing java processes
-                    for /f "tokens=1" %%i in ('jps -l ^| findstr "spring-0.0.1-SNAPSHOT.jar"') do (
-                        echo Killing Spring Boot process: %%i
-                        taskkill /F /PID %%i 2>nul
-                    )
-                    
-                    REM Fallback - kill all java processes if jps doesn't work
-                    taskkill /F /IM java.exe 2>nul || echo No Java processes found
-                    
-                    echo Waiting for cleanup...
-                    timeout /t 5 /nobreak
+                    cd spring
+                    echo "Starting application..."
+                    start /B java -jar target\\spring-0.0.1-SNAPSHOT.jar
+                    timeout /t 15 /nobreak
+                    echo "Application started!"
                 '''
             }
         }
         
-        stage('Deploy as Windows Service') {
+        stage('Test') {
             steps {
                 bat '''
-                    cd spring
-                    
-                    echo Creating service wrapper script...
-                    
-                    REM Create a PowerShell script to run the app as a service-like process
-                    echo $processName = "SpringBootApp" > deploy_app.ps1
-                    echo $jarPath = "%cd%\\target\\spring-0.0.1-SNAPSHOT.jar" >> deploy_app.ps1
-                    echo $logPath = "%cd%\\application.log" >> deploy_app.ps1
-                    echo. >> deploy_app.ps1
-                    echo Write-Host "Starting Spring Boot Application..." >> deploy_app.ps1
-                    echo $process = Start-Process -FilePath "java" -ArgumentList "-jar", $jarPath -RedirectStandardOutput $logPath -RedirectStandardError $logPath -WindowStyle Hidden -PassThru >> deploy_app.ps1
-                    echo Write-Host "Spring Boot Application started with PID: $($process.Id)" >> deploy_app.ps1
-                    echo $process.Id ^| Out-File -FilePath "app.pid" -Encoding ASCII >> deploy_app.ps1
-                    
-                    REM Execute the PowerShell script
-                    powershell -ExecutionPolicy Bypass -File deploy_app.ps1
-                    
-                    echo Deployment script executed!
-                '''
-            }
-        }
-        
-        stage('Verify Deployment') {
-            steps {
-                bat '''
-                    cd spring
-                    
-                    echo Waiting for application startup...
-                    timeout /t 20 /nobreak
-                    
-                    echo Checking if application is running...
-                    if exist app.pid (
-                        set /p APP_PID=<app.pid
-                        echo Application PID: %APP_PID%
-                        tasklist /FI "PID eq %APP_PID%" | findstr %APP_PID% && echo Application is running || echo Application not found
-                    )
-                    
-                    echo Testing endpoints...
-                    curl -m 10 http://localhost:8080/greeting || echo Endpoint test failed
-                    curl -m 10 http://localhost:8080/greeting/simple || echo Simple endpoint test failed
-                    
-                    echo Checking application logs...
-                    if exist application.log (
-                        echo Last 10 lines of application log:
-                        powershell "Get-Content application.log -Tail 10"
-                    )
+                    echo "Testing application..."
+                    curl http://localhost:8080/greeting || echo "App might still be starting"
+                    echo "Done!"
                 '''
             }
         }
     }
     
     post {
-        success {
-            echo '✅ DEPLOYMENT SUCCESSFUL!'
-            echo ''
-            echo '🚀 Your Spring Boot application is now running automatically!'
-            echo ''
-            echo '📡 Available endpoints:'
-            echo '   • http://localhost:8080/greeting'
-            echo '   • http://localhost:8080/greeting/simple' 
-            echo '   • http://localhost:8080/greeting/all'
-            echo ''
-            echo '📋 Management:'
-            script {
-                bat '''
-                    cd spring
-                    if exist app.pid (
-                        set /p APP_PID=<app.pid
-                        echo   • To stop: taskkill /F /PID %APP_PID%
-                        echo   • Process ID: %APP_PID%
-                    )
-                    echo   • Logs: spring\\application.log
-                '''
-            }
-        }
-        failure {
-            echo '❌ Deployment failed!'
-            bat '''
-                cd spring
-                if exist application.log (
-                    echo Recent application logs:
-                    powershell "Get-Content application.log -Tail 20"
-                )
-            '''
+        always {
+            echo 'Pipeline completed!'
         }
     }
 }

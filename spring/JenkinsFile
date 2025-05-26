@@ -13,9 +13,6 @@ pipeline {
                     
                     echo Maven version:
                     mvn -version
-                    
-                    echo Listing root files:
-                    dir
                 '''
             }
         }
@@ -23,12 +20,7 @@ pipeline {
         stage('Navigate and Build') {
             steps {
                 bat '''
-                    echo Navigating to spring directory:
                     cd spring
-                    
-                    echo Listing spring directory:
-                    dir
-                    
                     echo Building with system Maven:
                     mvn clean package -DskipTests
                 '''
@@ -43,7 +35,8 @@ pipeline {
                     echo Stopping existing application:
                     taskkill /F /IM java.exe 2>nul || echo No existing Java process found
                     
-                    timeout /t 3 /nobreak >nul
+                    echo Waiting 3 seconds...
+                    ping 127.0.0.1 -n 4 > nul
                     
                     echo Checking for JAR file:
                     dir target\\*.jar
@@ -54,8 +47,8 @@ pipeline {
                         start /B java -jar %%f
                     )
                     
-                    echo Waiting for application startup:
-                    timeout /t 20 /nobreak >nul
+                    echo Waiting for application startup...
+                    ping 127.0.0.1 -n 21 > nul
                 '''
             }
         }
@@ -65,12 +58,12 @@ pipeline {
                 bat '''
                     echo Testing application:
                     
-                    REM List Java processes
+                    echo Checking Java processes:
                     tasklist | findstr java || echo No Java processes found
                     
-                    REM Test endpoints
-                    curl http://localhost:8080/ || echo Testing root endpoint...
-                    curl http://localhost:8080/hello || echo Testing hello endpoint...
+                    echo Testing endpoints:
+                    curl http://localhost:8080/ || echo Root endpoint test failed
+                    curl http://localhost:8080/hello || echo Hello endpoint test failed
                     
                     echo Health check completed!
                 '''

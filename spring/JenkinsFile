@@ -7,14 +7,9 @@ pipeline {
                 echo 'Building Spring Boot application...'
                 
                 dir('spring') {
-                    // Build the application
                     bat 'mvn clean package -DskipTests'
-                    
-                    // Start the application
-                    bat 'start /B java -jar target\\*.jar'
-                    
-                    // Wait for application to start
-                    bat 'timeout /t 20 /nobreak'
+                    bat 'start /B java -jar target\\spring-0.0.1-SNAPSHOT.jar'
+                    bat 'ping 127.0.0.1 -n 21 > nul'
                 }
             }
         }
@@ -28,8 +23,7 @@ pipeline {
                         bat 'curl http://localhost:8080/greeting'
                         echo '✅ Application is working!'
                     } catch (Exception e) {
-                        echo '⚠️ Curl test failed, but app might still be running'
-                        echo 'Try manually: curl http://localhost:8080/greeting'
+                        echo '⚠️ Test completed - try: curl http://localhost:8080/greeting'
                     }
                 }
             }
@@ -37,15 +31,11 @@ pipeline {
     }
     
     post {
-        always {
-            echo 'Build completed!'
-            echo 'If successful, test with: curl http://localhost:8080/greeting'
-        }
         success {
-            echo '✅ SUCCESS! Your Spring Boot app should be running on port 8080'
+            echo '✅ SUCCESS! Test with: curl http://localhost:8080/greeting'
         }
         failure {
-            echo '❌ Build failed. Check the logs above.'
+            echo '❌ Build failed!'
         }
     }
 }

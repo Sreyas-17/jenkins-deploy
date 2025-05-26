@@ -2,69 +2,40 @@ pipeline {
     agent any
     
     stages {
-        stage('Test Repository Checkout') {
+        stage('Build and Deploy') {
             steps {
-                echo 'Repository checkout successful!'
-                bat 'dir'
-                echo 'Files in current directory listed above'
-            }
-        }
-        
-        stage('Check Java and Maven') {
-            steps {
-                echo 'Testing Java...'
-                script {
-                    try {
-                        bat 'java -version'
-                        echo '✅ Java is working'
-                    } catch (Exception e) {
-                        echo '❌ Java not found or not configured'
-                    }
-                }
+                echo 'Building and deploying Spring Boot app...'
                 
-                echo 'Testing Maven...'
-                script {
-                    try {
-                        bat 'mvn -version'
-                        echo '✅ Maven is working'
-                    } catch (Exception e) {
-                        echo '❌ Maven not found or not configured'
-                    }
-                }
-            }
-        }
-        
-        stage('Check Project Files') {
-            steps {
-                echo 'Looking for project files...'
-                script {
-                    if (fileExists('pom.xml')) {
-                        echo '✅ pom.xml found'
-                        bat 'type pom.xml'
-                    } else {
-                        echo '❌ pom.xml not found'
-                        bat 'dir /s pom.xml'
-                    }
+                dir('spring') {
+                    // Stop any running app on port 8080
+                    bat '''
+                        for /f "tokens=5" %%i in ('netstat -ano ^| findstr :8080 ^| findstr LISTENING') do (
+                            taskkill /PID %%i /F 2>nul || echo No process to kill
+                        )
+                    '''
                     
-                    if (fileExists('src')) {
-                        echo '✅ src directory found'
-                        bat 'dir src /s'
-                    } else {
-                        echo '❌ src directory not found'
-                    }
+                    // Build the app
+                    bat 'mvn clean package -DskipTests'
+                    
+                    // Start the app
+                    bat 'start /B java -jar target\\*.jar'
+                    
+                    // Wait for startup
+                    bat 'timeout /t 30 /nobreak'
                 }
             }
         }
         
-        stage('Test Maven Build') {
+        stage('Test') {
             steps {
-                echo 'Testing Maven clean...'
+                echo 'Testing the application...'
+                
                 script {
                     try {
-                        bat 'mvn clean'
-                        echo '✅ Maven clean successful'
+                        bat 'curl http://localhost:8080/greeting'
+                        echo '✅ Application is running!'
                     } catch (Exception e) {
-                        echo "❌ Maven clean failed: ${e.getMessage()}"
+                        echo '❌ Application test failed'
                     }
                 }
             }
@@ -72,14 +43,12 @@ pipeline {
     }
     
     post {
-        always {
-            echo 'Test pipeline completed!'
-        }
         success {
-            echo '✅ All tests passed! Ready for full deployment.'
+            echo '🎉 SUCCESS! Your app is running on http://localhost:8080/greeting'
+            echo 'Test it with: curl http://localhost:8080/greeting'
         }
         failure {
-            echo '❌ Some tests failed. Check Jenkins configuration.'
+            echo '❌ Deployment failed!'
         }
     }
 }

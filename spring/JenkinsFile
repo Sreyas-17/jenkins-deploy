@@ -63,7 +63,8 @@ pipeline {
                     
                     echo Testing application endpoints:
                     curl -m 10 http://localhost:8080/ || echo Root endpoint not ready
-                    curl -m 10 http://localhost:8080/hello || echo Hello endpoint not ready
+                    curl -m 10 http://localhost:8080/greeting || echo Greeting endpoint not ready
+                    curl -m 10 http://localhost:8080/greeting/simple || echo Simple greeting endpoint not ready
                     
                     echo Health check completed!
                 '''
@@ -74,7 +75,11 @@ pipeline {
     post {
         success {
             echo 'Deployment pipeline completed successfully!'
-            echo 'Your Spring Boot app should be running on http://localhost:8080'
+            echo 'Your Spring Boot app should be running on:'
+            echo '  - http://localhost:8080/greeting (GET, POST, PUT, DELETE)'
+            echo '  - http://localhost:8080/greeting/simple (GET)'
+            echo '  - http://localhost:8080/greeting/all (GET all greetings)'
+            echo '  - http://localhost:8080/greeting/custom (POST custom greeting)'
         }
         failure {
             echo 'Pipeline failed. Check the logs for details.'

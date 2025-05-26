@@ -2,13 +2,13 @@ pipeline {
     agent any
     
     stages {
-        stage('Build Only') {
+        stage('Build') {
             steps {
                 bat '''
                     cd spring
-                    echo "Building Spring Boot application..."
+                    echo Building Spring Boot application...
                     mvn clean package -DskipTests -q
-                    echo "Build completed!"
+                    echo Build completed!
                     dir target\\*.jar
                 '''
             }
@@ -18,20 +18,21 @@ pipeline {
             steps {
                 bat '''
                     cd spring
-                    echo "Starting application..."
+                    echo Starting application...
                     start /B java -jar target\\spring-0.0.1-SNAPSHOT.jar
-                    timeout /t 15 /nobreak
-                    echo "Application started!"
+                    echo Application startup initiated!
                 '''
             }
         }
         
-        stage('Test') {
+        stage('Wait and Test') {
             steps {
                 bat '''
-                    echo "Testing application..."
-                    curl http://localhost:8080/greeting || echo "App might still be starting"
-                    echo "Done!"
+                    echo Waiting for application to start...
+                    ping 127.0.0.1 -n 16 > nul
+                    echo Testing application...
+                    curl http://localhost:8080/greeting || echo App might still be starting
+                    echo Pipeline completed!
                 '''
             }
         }
@@ -39,7 +40,7 @@ pipeline {
     
     post {
         always {
-            echo 'Pipeline completed!'
+            echo 'Build finished! Check http://localhost:8080/greeting'
         }
     }
 }

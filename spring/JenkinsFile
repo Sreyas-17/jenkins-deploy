@@ -2,68 +2,68 @@ pipeline {
     agent any
     
     stages {
-        stage('Verify Environment') {
+        stage('Build') {
             steps {
                 bat '''
-                    echo Current directory:
-                    cd
+                    cd spring
+                    echo Building Spring Boot application...
+                    mvn clean package -DskipTests
                     
-                    echo Java version:
-                    java -version
-                    
-                    echo Maven version:
-                    mvn -version
+                    echo Build completed! JAR file created:
+                    dir target\\*.jar
                 '''
             }
         }
         
-        stage('Navigate and Build') {
+        stage('Stop Previous App') {
             steps {
                 bat '''
-                    cd spring
-                    echo Building with system Maven:
-                    mvn clean package -DskipTests
+                    echo Checking for running Spring Boot applications...
+                    for /f "tokens=2" %%i in ('tasklist /FI "IMAGENAME eq java.exe" /FO CSV ^| findstr "java.exe"') do (
+                        echo Found Java process: %%i
+                        taskkill /F /PID %%i 2>nul || echo Could not kill process %%i
+                    )
+                    
+                    echo Waiting for cleanup...
+                    ping 127.0.0.1 -n 6 > nul
                 '''
             }
         }
         
         stage('Deploy') {
             steps {
-                bat '''
-                    cd spring
-                    
-                    echo Stopping existing application:
-                    taskkill /F /IM java.exe 2>nul || echo No existing Java process found
-                    
-                    echo Waiting 3 seconds...
-                    ping 127.0.0.1 -n 4 > nul
-                    
-                    echo Checking for JAR file:
-                    dir target\\*.jar
-                    
-                    echo Starting Spring Boot application:
-                    for %%f in (target\\*.jar) do (
-                        echo Starting: %%f
-                        start /B java -jar %%f
-                    )
-                    
-                    echo Waiting for application startup...
-                    ping 127.0.0.1 -n 21 > nul
-                '''
+                script {
+                    dir('spring') {
+                        bat '''
+                            echo Deploying Spring Boot application...
+                            
+                            REM Create a simple batch script to run the app
+                            echo @echo off > start_app.bat
+                            echo cd /d "%cd%" >> start_app.bat
+                            echo java -jar target\\spring-0.0.1-SNAPSHOT.jar >> start_app.bat
+                            
+                            REM Start the application in a separate window
+                            start "SpringBoot App" cmd /c start_app.bat
+                            
+                            echo Application deployment script created and started!
+                        '''
+                    }
+                }
             }
         }
         
         stage('Health Check') {
             steps {
                 bat '''
-                    echo Testing application:
+                    echo Waiting for application to start...
+                    ping 127.0.0.1 -n 16 > nul
                     
-                    echo Checking Java processes:
-                    tasklist | findstr java || echo No Java processes found
+                    echo Checking for Java processes:
+                    tasklist | findstr java.exe || echo No Java processes found
                     
-                    echo Testing endpoints:
-                    curl http://localhost:8080/ || echo Root endpoint test failed
-                    curl http://localhost:8080/hello || echo Hello endpoint test failed
+                    echo Testing application endpoints:
+                    curl -m 10 http://localhost:8080/ || echo Root endpoint not ready
+                    curl -m 10 http://localhost:8080/hello || echo Hello endpoint not ready
                     
                     echo Health check completed!
                 '''
@@ -73,10 +73,18 @@ pipeline {
     
     post {
         success {
-            echo 'Spring Boot application deployed successfully!'
+            echo 'Deployment pipeline completed successfully!'
+            echo 'Your Spring Boot app should be running on http://localhost:8080'
         }
         failure {
-            echo 'Deployment failed. Check the logs above.'
+            echo 'Pipeline failed. Check the logs for details.'
+        }
+        always {
+            echo 'Cleaning up temporary files...'
+            bat '''
+                cd spring
+                if exist start_app.bat del start_app.bat
+            '''
         }
     }
 }

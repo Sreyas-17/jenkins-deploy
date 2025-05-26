@@ -21,9 +21,9 @@ pipeline {
                 script {
                     try {
                         bat 'curl http://localhost:8080/greeting'
-                        echo '✅ Application is working!'
+                        echo ' Application is working!'
                     } catch (Exception e) {
-                        echo '⚠️ Test completed - try: curl http://localhost:8080/greeting'
+                        echo ' Test completed - try: curl http://localhost:8080/greeting'
                     }
                 }
             }
@@ -32,10 +32,10 @@ pipeline {
     
     post {
         success {
-            echo '✅ SUCCESS! Test with: curl http://localhost:8080/greeting'
+            echo ' SUCCESS! Test with: curl http://localhost:8080/greeting'
         }
         failure {
-            echo '❌ Build failed!'
+            echo ' Build failed!'
         }
     }
 }

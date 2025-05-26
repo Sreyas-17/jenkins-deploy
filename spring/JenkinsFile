@@ -14,7 +14,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/your-username/jenkins-deploy.git'
+                git branch: 'main', url: 'https://github.com/Sreyas-17/jenkins-deploy'
                 // Replace with your actual Git repository URL
             }
         }
